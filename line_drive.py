@@ -9,35 +9,14 @@ Width = 640
 Height = 480
 Offset = 330
 
+def grayscale(img): # 흑백이미지로 변환
+    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
-def region_of_interest(img, vertices, color3=(255,255,255), color1=255): # ROI 셋팅
+def canny(img, low_threshold, high_threshold): # Canny 알고리즘
+    return cv2.Canny(img, low_threshold, high_threshold)
 
-    mask = np.zeros_like(img) # mask = img와 같은 크기의 빈 이미지
-    
-    if len(img.shape) > 2: # Color 이미지(3채널)라면 :
-        color = color3
-    else: # 흑백 이미지(1채널)라면 :
-        color = color1
-        
-    # vertices에 정한 점들로 이뤄진 다각형부분(ROI 설정부분)을 color로 채움 
-    cv2.fillPoly(mask, vertices, color)
-    
-    # 이미지와 color로 채워진 ROI를 합침
-    ROI_image = cv2.bitwise_and(img, mask)
-    return ROI_image
-
-
-def mark_img(img, blue_threshold=150, green_threshold=150, red_threshold=150): # 흰색 차선 찾기
-
-    #  BGR 제한 값
-    bgr_threshold = [blue_threshold, green_threshold, red_threshold]
-
-    # BGR 제한 값보다 작으면 검은색으로
-    thresholds = (image[:,:,0] < bgr_threshold[0]) \
-                | (image[:,:,1] < bgr_threshold[1]) \
-                | (image[:,:,2] < bgr_threshold[2])
-    mark[thresholds] = [0,0,0]
-    return mark
+def gaussian_blur(img, kernel_size): # 가우시안 필터
+    return cv2.GaussianBlur(img, (kernel_size, kernel_size), 0)
 
 # draw rectangle
 def draw_rectangle(img, lpos, rpos, offset=0):
@@ -95,18 +74,16 @@ if __name__ == '__main__':
         ret, image = cap.read()
         pos, frame = process_image(image)
         height, width = image.shape[:2] # 이미지 높이, 너비
-	# 사다리꼴 모형의 Points
-	vertices = np.array([[(50,height),(width/2-45, height/2+60), (width/2+45, height/2+60), (width-50,height)]], dtype=np.int32)
-	roi_img = region_of_interest(image, vertices) # vertices에 정한 점들 기준으로 ROI 이미지 생성
-	mark = np.copy(roi_img) # roi_img 복사
-	mark = mark_img(roi_img) # 흰색 차선 찾기
 
-	cv2.imshow('roi_white',mark) # 흰색 차선 추출 결과 출력
+	gray_img = grayscale(image) # 흑백이미지로 변환
+    
+	blur_img = gaussian_blur(gray_img, 3) # Blur 효과
+        
+	canny_img = canny(blur_img, 70, 210) # Canny edge 알고리즘
 
-
+	cv2.imshow('result',canny_img) # Canny 이미지 출력
         steer_angle = 0
         draw_steer(frame, steer_angle)
 
         if cv2.waitKey(3) & 0xFF == ord('q'):
             break
-
