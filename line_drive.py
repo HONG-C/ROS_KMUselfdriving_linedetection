@@ -5,7 +5,7 @@ import rospy
 import numpy as np
 import cv2, random, math, time
 
-Width = 640
+Width = 750#640
 Height = 480
 Offset = 330
 
@@ -62,11 +62,11 @@ def draw_rectangle(img, lpos, rpos, offset=0):
                        (0, 255, 0), 2)   
     return img
 
-# You are to find "left and light position" of road lanes
+# You are to find "left and right position" of road lanes
 def process_image(frame):
     global Offset
     
-    lpos, rpos = 100, 500
+    lpos, rpos = 100, 500#이게 초록 점을 출력하는 부분 
     frame = draw_rectangle(frame, lpos, rpos, offset=Offset)
     
     return (lpos, rpos), frame
@@ -109,14 +109,23 @@ if __name__ == '__main__':
 	gray_img = grayscale(image) # 흑백이미지로 변환
 	blur_img = gaussian_blur(gray_img, 3) # Blur 효과
 	canny_img = canny(blur_img, 70, 210) # Canny edge 알고리즘
-	vertices = np.array([[(50,height),(width/2-45, height/2+60), (width/2+45, height/2+60), (width-50,height)]], dtype=np.int32)
+	vertices = np.array([[(0,height),(0,height-120),(width/2-200, height/2+50), (width/2+200, height/2+50), (width,height-120) ,(width,height)]], dtype=np.int32)
+	#vertices = np.array([[(50,height),(width/2-45, height/2+60), (width/2+45, height/2+60), (width-50,height)]], dtype=np.int32)
 	ROI_img = region_of_interest(canny_img, vertices) # ROI 설정
 	hough_img = hough_lines(ROI_img, 1, 1 * np.pi/180, 30, 10, 20) # 허프 변환
 	result = weighted_img(hough_img, image) # 원본 이미지에 검출된 선 overlap
-	cv2.imshow('result',result) # 결과 이미지 출력
-	cv2.imshow('ROI_img',ROI_img) # roi 이미지 출력        
+
+	"""
+	cv2.imshow('gray_img',gray_img) # 결과 이미지 출력
+	cv2.imshow('blur_img',blur_img) # blur 이미지 출력 
+	cv2.imshow('canny_img',canny_img) # canny edge 이미지 출력  
+	cv2.imshow('ROI_img',ROI_img) # roi 이미지 출력     
+	cv2.imshow('hough_img',hough_img) # hough 변환 이미지 출력
+     	"""
+
+	cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력	cv2.imshow('rectangle', result)  
         steer_angle = 0
-        draw_steer(frame, steer_angle)
+        draw_steer(result, steer_angle)
 
         if cv2.waitKey(3) & 0xFF == ord('q'):
             break
