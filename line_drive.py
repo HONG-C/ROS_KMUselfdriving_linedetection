@@ -5,7 +5,7 @@ import rospy
 import numpy as np
 import cv2, random, math, time
 
-Width = 750#640
+Width = 640#640
 Height = 480
 Offset = 330
 
@@ -40,16 +40,6 @@ def draw_lines(img, lines, color=[0, 0, 255], thickness=2): # 선 그리기
 		for x1,y1,x2,y2 in line:
 		    cv2.line(img, (x1, y1), (x2, y2), color, thickness)
 
-def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허프 변환
-    lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
-    line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-    draw_lines(line_img, lines)
-
-    return line_img
-
-def weighted_img(img, initial_img, a=1, b=1.0, c=0.0): # 두 이미지 operlap 하기
-    return cv2.addWeighted(initial_img, a, img, b, c)
-
 # draw rectangle
 def draw_rectangle(img, lpos, rpos, offset=0):
     center = (lpos + rpos) / 2
@@ -60,14 +50,56 @@ def draw_rectangle(img, lpos, rpos, offset=0):
     cv2.rectangle(img, (rpos - 5, 15 + offset),
                        (rpos + 5, 25 + offset),
                        (0, 255, 0), 2)   
+    cv2.rectangle(img, (center-5, 15 + offset),
+                       (center+ 5, 25 + offset),
+                       (0, 0, 255), 2)   
+
+
     return img
+
+def draw_moving_rectangle(img, lines, color=[0, 0, 255], thickness=2): # 기준점 그리기
+    if lines is not None:
+	    for line in lines:
+		for x1,y1,x2,y2 in line:
+		    if not(x1>200 and x2<400):
+			if (y1<360) and (y2<360):	
+			    lpos,rpos=100,500
+			    lpos=x1
+			    rpos=x2
+			    #draw_rectangle(img, lpos, rpos, offset=Offset)
+			    cv2.rectangle(img, (rpos - 5, 345),
+                       (rpos + 5, 335),
+                       (0, 255, 0), 2)
+
+			else:
+			    pass
+		    else:
+			pass
+
+
+    return img
+
+
+def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허프 변환
+    lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
+    line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
+    draw_lines(line_img, lines)
+    draw_moving_rectangle(line_img, lines)
+    #draw_rectangle(line_img, lines[0],lines[2])
+
+    return line_img
+
+def weighted_img(img, initial_img, a=1, b=1.0, c=0.0): # 두 이미지 operlap 하기
+    return cv2.addWeighted(initial_img, a, img, b, c)
+
+
 
 # You are to find "left and right position" of road lanes
 def process_image(frame):
     global Offset
     
     lpos, rpos = 100, 500#이게 초록 점을 출력하는 부분 
-    frame = draw_rectangle(frame, lpos, rpos, offset=Offset)
+    #frame = draw_rectangle(frame, lpos, rpos, offset=Offset)
     
     return (lpos, rpos), frame
 
@@ -123,8 +155,10 @@ if __name__ == '__main__':
 	cv2.imshow('hough_img',hough_img) # hough 변환 이미지 출력
      	"""
 
-	cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력	cv2.imshow('rectangle', result)  
-        steer_angle = 0
+
+	cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력	 
+	#pos, frame = process_image(result)
+        steer_angle = 10
         draw_steer(result, steer_angle)
 
         if cv2.waitKey(3) & 0xFF == ord('q'):
