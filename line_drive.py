@@ -9,7 +9,9 @@ Width = 640#640
 Height = 480
 Offset = 330
 rpos=500
+rpos_prev=500
 lpos=100
+lpos_prev=100
 center=300
 
 def grayscale(img): # 흑백이미지로 변환
@@ -62,61 +64,57 @@ def draw_rectangle(img, lpos, rpos, offset=0):
     return img
 
 
-
 def draw_moving_rectangle_R(img, lines, color=[0, 0, 255], thickness=2): # 기준점 그리기
     if lines is not None:
 	    for line in lines:
 		for x1,y1,x2,y2 in line:
-	 	    global rpos
-		    if (x1>400 and (y1==335)):
+	 	    global rpos,rpos_prev
+		    if (x1>400) and (y1==335):
 			rpos=x1
-    			cv2.rectangle(img, (rpos - 5, 345),
-                       (rpos + 5, 355),
+			#if abs(rpos-rpos_prev)<5:
+				#rpos=rpos_prev
+    			cv2.rectangle(img, (rpos +10, 345),
+                       (rpos + 20, 355),
                        (0, 255, 0), 2)
-   
-		    else:
-			#rpos=640
-			pass	
+   			#cv2.line(img,(rpos+10,345),(rpos+10,345),(0, 255, 0),10)
 
-    return img
+		    else:
+			rpos=rpos_prev
+				
+	     	    print("right:",round(float(rpos)/10)*10)	
+    return rpos
 
 
 def draw_moving_rectangle_L(img, lines, color=[0, 0, 255], thickness=2): # 기준점 그리기
     if lines is not None:
 	    for line in lines:
 		for x1,y1,x2,y2 in line:
-	 	    global lpos
+	 	    global lpos,lpos_prev
 		    if (x1<200 and (y1==335)):
 			lpos=x1
-    			cv2.rectangle(img, (lpos - 5, 345),
-                       (lpos + 5, 355),
+			#if abs(lpos-lpos_prev)<5:
+				#lpos=lpos_prev
+    			cv2.rectangle(img, (lpos - 20, 345),
+                       (lpos -10, 355),
                        (0, 255, 0), 2)
-		    else:
-   			#lpos=0
-			pass
+   		    else:
+   			lpos=lpos_prev
 
 
+    return lpos
 
-    return img
+
+def weighted_img(img, initial_img, a=1, b=1.0, c=0.0): # 두 이미지 operlap 하기
+    return cv2.addWeighted(initial_img, a, img, b, c)
 
 def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허프 변환
     global rpos,lpos,center
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
     line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
     draw_lines(line_img, lines)
-    draw_moving_rectangle_R(line_img, lines)
-    draw_moving_rectangle_L(line_img, lines)
-
-    if lpos<90:
-	lpos=10
-    	cv2.rectangle(line_img, (lpos - 5, 345),
-                       (lpos + 5, 355),
-                       (0, 255, 0), 2)	
-    if rpos>579:
-	rpos=580
-    	cv2.rectangle(line_img, (rpos - 5, 345),
-                       (rpos + 5, 355),
-                       (0, 255, 0), 2)	
+    rpos=draw_moving_rectangle_R(line_img, lines)
+    lpos=draw_moving_rectangle_L(line_img, lines)
+ 
     center = (lpos + rpos) / 2
     cv2.rectangle(line_img, (center-5, 345),
                        (center+ 5, 355),
@@ -124,12 +122,11 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허�
     cv2.rectangle(line_img, (335, 345),
                        (345, 355),
                        (255, 0, 0), 2)   #차선 기준점 작성 
-
+    print("right:",rpos,"left:",lpos)	 
 
     return line_img
 
-def weighted_img(img, initial_img, a=1, b=1.0, c=0.0): # 두 이미지 operlap 하기
-    return cv2.addWeighted(initial_img, a, img, b, c)
+
 
 
 
@@ -182,25 +179,20 @@ if __name__ == '__main__':
 	vertices = np.array([[(0,height),(0,height-120),(width/2-200, height/2+50), (width/2+200, height/2+50), (width,height-120) ,(width,height)]], dtype=np.int32)
 	#vertices = np.array([[(50,height),(width/2-45, height/2+60), (width/2+45, height/2+60), (width-50,height)]], dtype=np.int32)
 	ROI_img = region_of_interest(canny_img, vertices) # ROI 설정
-	hough_img = hough_lines(ROI_img, 1, 1 * np.pi/180, 30, 0.001, 0.1) # 허프 변환
+	hough_img = hough_lines(ROI_img, 1, 1 * np.pi/180, 30, 0.001, 0.01) # 허프 변환
 	result = weighted_img(hough_img, image) # 원본 이미지에 검출된 선 overlap
+	cv2.imshow('hough_img',hough_img) # roi 이미지 출력     
+    
+	cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력
 
-	"""
-	cv2.imshow('gray_img',gray_img) # 결과 이미지 출력
-	cv2.imshow('blur_img',blur_img) # blur 이미지 출력 
-	cv2.imshow('canny_img',canny_img) # canny edge 이미지 출력  
-	cv2.imshow('ROI_img',ROI_img) # roi 이미지 출력     
-	cv2.imshow('hough_img',hough_img) # hough 변환 이미지 출력
-     	"""
-
-
-	#cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력
-        print("right:",rpos,"left:",lpos)	 
  
-        steer_angle = -(center-340)/4
-        print("steer_angle:",steer_angle)
+        steer_angle = -(center-340)/2
+        #print("steer_angle:",steer_angle)
         draw_steer(result, steer_angle)
+	rpos_prev=rpos
+	lpos_prev=lpos
 
-        if cv2.waitKey(3) & 0xFF == ord('q'):
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
