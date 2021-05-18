@@ -4,6 +4,7 @@
 import rospy
 import numpy as np
 import cv2, random, math, time
+import matplotlib.pyplot as plt
 
 Width = 640#640
 Height = 480
@@ -13,6 +14,9 @@ rpos_prev=500
 lpos=100
 lpos_prev=100
 center=300
+x_axis=[]
+y_axis=[]
+running_time=0
 
 def grayscale(img): # 흑백이미지로 변환
     return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
@@ -69,19 +73,19 @@ def draw_moving_rectangle_R(img, lines, color=[0, 0, 255], thickness=2): # 기�
 	    for line in lines:
 		for x1,y1,x2,y2 in line:
 	 	    global rpos,rpos_prev
-		    if (x1>400) and (y1==335):
+		    if (x1>400) and (y1==315):
 			rpos=x1
 			#if abs(rpos-rpos_prev)<5:
 				#rpos=rpos_prev
-    			cv2.rectangle(img, (rpos +10, 345),
-                       (rpos + 20, 355),
+    			cv2.rectangle(img, (rpos +10, 325),
+                       (rpos + 20, 335),
                        (0, 255, 0), 2)
    			#cv2.line(img,(rpos+10,345),(rpos+10,345),(0, 255, 0),10)
 
 		    else:
-			rpos=rpos_prev
-				
-	     	    print("right:",round(float(rpos)/10)*10)	
+			if abs(rpos-rpos_prev)<5:
+				rpos=rpos_prev
+					
     return rpos
 
 
@@ -90,15 +94,16 @@ def draw_moving_rectangle_L(img, lines, color=[0, 0, 255], thickness=2): # 기�
 	    for line in lines:
 		for x1,y1,x2,y2 in line:
 	 	    global lpos,lpos_prev
-		    if (x1<200 and (y1==335)):
+		    if (x1<200 and (y1==315)):
 			lpos=x1
 			#if abs(lpos-lpos_prev)<5:
 				#lpos=lpos_prev
-    			cv2.rectangle(img, (lpos - 20, 345),
-                       (lpos -10, 355),
+    			cv2.rectangle(img, (lpos - 20, 325),
+                       (lpos -10, 335),
                        (0, 255, 0), 2)
    		    else:
-   			lpos=lpos_prev
+			if abs(lpos-lpos_prev)<5:
+				lpos=lpos_prev
 
 
     return lpos
@@ -107,6 +112,20 @@ def draw_moving_rectangle_L(img, lines, color=[0, 0, 255], thickness=2): # 기�
 def weighted_img(img, initial_img, a=1, b=1.0, c=0.0): # 두 이미지 operlap 하기
     return cv2.addWeighted(initial_img, a, img, b, c)
 
+def smoothing(lines, pre_frame):
+    # collect frames & print average line
+    lines = np.squeeze(lines)
+    avg_line = np.array([0,0,0,0])
+    
+    for ii,line in enumerate(reversed(lines)):
+        if ii == pre_frame:
+            break
+        avg_line += line
+    avg_line = avg_line / pre_frame
+
+    return avg_line
+
+
 def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허프 변환
     global rpos,lpos,center
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
@@ -114,7 +133,7 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허�
     draw_lines(line_img, lines)
     rpos=draw_moving_rectangle_R(line_img, lines)
     lpos=draw_moving_rectangle_L(line_img, lines)
- 
+    smoothing(lines,10)
     center = (lpos + rpos) / 2
     cv2.rectangle(line_img, (center-5, 345),
                        (center+ 5, 355),
@@ -191,8 +210,15 @@ if __name__ == '__main__':
         draw_steer(result, steer_angle)
 	rpos_prev=rpos
 	lpos_prev=lpos
-
+#차선 인지 확인을 위한 그래프 작성 
+	running_time=running_time+1
+	x_axis.append(running_time)
+	y_axis.append(rpos)
+	plt.plot(x_axis,y_axis)
+	#plt.pause(0.0000001)
+        #바로 위에 꺼 주석처리 해제하면 그래프 확인가능 
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+
 
