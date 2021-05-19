@@ -13,6 +13,8 @@ rpos=500
 rpos_prev=500
 lpos=100
 lpos_prev=100
+mpos=300
+mpos_prev=300
 center=300
 x_axis=[]
 y_axis=[]
@@ -80,7 +82,10 @@ def draw_moving_rectangle_R(img, lines, color=[0, 0, 255], thickness=2): # 기�
     			cv2.rectangle(img, (rpos +10, 325),
                        (rpos + 20, 335),
                        (0, 255, 0), 2)
-   			#cv2.line(img,(rpos+10,345),(rpos+10,345),(0, 255, 0),10)
+    			cv2.rectangle(img,(640, 385),
+                       (630, 395),
+                       (0, 255, 0), 2)
+   			cv2.line(img,(rpos+10,325),(640,385),(0, 255, 0),4)
 
 		    else:
 			if abs(rpos-rpos_prev)<5:
@@ -94,19 +99,42 @@ def draw_moving_rectangle_L(img, lines, color=[0, 0, 255], thickness=2): # 기�
 	    for line in lines:
 		for x1,y1,x2,y2 in line:
 	 	    global lpos,lpos_prev
-		    if (x1<200 and (y1==315)):
+		    if (x1<200) and (y1==315):
 			lpos=x1
 			#if abs(lpos-lpos_prev)<5:
 				#lpos=lpos_prev
     			cv2.rectangle(img, (lpos - 20, 325),
                        (lpos -10, 335),
                        (0, 255, 0), 2)
+    			cv2.rectangle(img, (0, 400),
+                       (10, 410),
+                       (0, 255, 0), 2)
+   			cv2.line(img,(lpos - 20, 325),(10, 410),(0, 255, 0),4)
    		    else:
 			if abs(lpos-lpos_prev)<5:
 				lpos=lpos_prev
 
 
     return lpos
+
+def draw_moving_rectangle_M(img, lines, color=[0, 0, 255], thickness=2): # 기준점 그리기
+    if lines is not None:
+	    for line in lines:
+		for x1,y1,x2,y2 in line:
+	 	    global mpos,mpos_prev
+		    if (230<x1<430) and (y1<100):
+			mpos=x1
+			#if abs(lpos-lpos_prev)<5:
+				#lpos=lpos_prev
+    			cv2.rectangle(img, (mpos - 20, 325),
+                       (mpos -10, 335),
+                       (255, 0, 0), 2)
+   		    else:
+			if abs(mpos-mpos_prev)<5:
+				mpos=mpos_prev
+
+
+    return mpos
 
 
 def weighted_img(img, initial_img, a=1, b=1.0, c=0.0): # 두 이미지 operlap 하기
@@ -133,7 +161,8 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허�
     draw_lines(line_img, lines)
     rpos=draw_moving_rectangle_R(line_img, lines)
     lpos=draw_moving_rectangle_L(line_img, lines)
-    smoothing(lines,10)
+    mpos=draw_moving_rectangle_M(line_img,lines)
+    smoothing(lines,30)
     center = (lpos + rpos) / 2
     cv2.rectangle(line_img, (center-5, 345),
                        (center+ 5, 355),
@@ -195,7 +224,7 @@ if __name__ == '__main__':
 	gray_img = grayscale(image) # 흑백이미지로 변환
 	blur_img = gaussian_blur(gray_img, 3) # Blur 효과
 	canny_img = canny(blur_img, 70, 210) # Canny edge 알고리즘
-	vertices = np.array([[(0,height),(0,height-120),(width/2-200, height/2+50), (width/2+200, height/2+50), (width,height-120) ,(width,height)]], dtype=np.int32)
+	vertices = np.array([[(0,height),(0,height-150),(width/2-200, height/2+50), (width/2+200, height/2+50), (width,height-150) ,(width,height)]], dtype=np.int32)
 	#vertices = np.array([[(50,height),(width/2-45, height/2+60), (width/2+45, height/2+60), (width-50,height)]], dtype=np.int32)
 	ROI_img = region_of_interest(canny_img, vertices) # ROI 설정
 	hough_img = hough_lines(ROI_img, 1, 1 * np.pi/180, 30, 0.001, 0.01) # 허프 변환
