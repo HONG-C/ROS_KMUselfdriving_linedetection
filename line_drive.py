@@ -15,11 +15,12 @@ lpos=100
 lpos_prev=100
 rpos_exist=1
 lpos_exist=1
-
+steer_angle_prev=[]
+steer_angle_prev.append(0)
+steer_angle_prev.append(1)
 
 center=300
-x_axis=[]
-y_axis=[]
+
 running_time=0
 R_turn=0
 L_turn=0
@@ -292,16 +293,24 @@ if __name__ == '__main__':
 
         steer_angle = -(center-340)/4
         #print("steer_angle:",steer_angle)
-        draw_steer(result, steer_angle)
+	#조향각의 한계치를 설정하는 부분
+    	if R_turn==1:
+		steer_angle=steer_angle-0.1
+    	if L_turn==1:
+		steer_angle=steer_angle+0.1
+
+	if steer_angle>=50:
+		steer_angle=50
+	if steer_angle<=-50:
+		steer_angle=-50
+
+	steer_angle_prev.append(steer_angle)
+
+	
+	draw_steer(result,steer_angle)
 	rpos_prev=rpos
 	lpos_prev=lpos
-#차선 인지 확인을 위한 그래프 작성 
-	running_time=running_time+1
-	x_axis.append(running_time)
-	y_axis.append(rpos)
-	plt.plot(x_axis,y_axis)
-	#plt.pause(0.0000001)
-        #바로 위에 꺼 주석처리 해제하면 그래프 확인가능 
+
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
