@@ -21,6 +21,8 @@ center=300
 x_axis=[]
 y_axis=[]
 running_time=0
+R_turn=0
+L_turn=0
 
 def grayscale(img): # 흑백이미지로 변환
     return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
@@ -114,7 +116,8 @@ def draw_moving_rectangle_M(img, lines, color=[0, 0, 255], thickness=2): # 기�
     if lines is not None:
 	    global rpos_exist
 	    global lpos_exist
-	    
+	    global R_turn,L_turn
+
 	    for line in lines:
 		for x1,y1,x2,y2 in line:
 		    if (x1<100):
@@ -123,9 +126,10 @@ def draw_moving_rectangle_M(img, lines, color=[0, 0, 255], thickness=2): # 기�
                        (left_rec -10, 385),
                        (255, 0, 0), 2)
 			rpos_exist=rpos_exist+1
-			if rpos_exist==400:
+			if rpos_exist==500:
 				print("왼쪽차선존재")
 				rpos_exist=0
+				R_turn=1
 	
 			else:
 				pass
@@ -139,19 +143,22 @@ def draw_moving_rectangle_M(img, lines, color=[0, 0, 255], thickness=2): # 기�
                        (right_rec -10, 385),
                        (255, 0, 0), 2)
 			lpos_exist=lpos_exist+1
-			if lpos_exist==400:
+			if lpos_exist==500:
 				print("오른쪽차선존재")
 				lpos_exist=0
+				L_turn=1
 	
 			else:
 				pass
    		    else:
 			pass
 
-		    if lpos_exist>=250 and rpos_exist>=250:
+		    if lpos_exist>=200 and rpos_exist>=200:
 			print("양쪽차선존재")
 			rpos_exist=0
 			lpos_exist=0
+			R_turn=0
+			L_turn=0
 		    else:
 			pass
 
@@ -188,13 +195,20 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허�
     rpos=draw_moving_rectangle_R(line_img, lines)
     lpos=draw_moving_rectangle_L(line_img, lines)
     draw_moving_rectangle_M(line_img, lines)
+    
+#test area
+    if R_turn==1:
+	rpos=620
+    if L_turn==1:
+	lpos=20
+#test area
     cv2.rectangle(line_img, (lpos - 20, 325),
                        (lpos -10, 335),
                        (0, 255, 0), 2)
     cv2.rectangle(line_img, (rpos +10, 325),
                        (rpos + 20, 335),
                        (0, 255, 0), 2)
-#test area
+
 
 #test area
 #기준 선 긋기 
@@ -273,11 +287,10 @@ if __name__ == '__main__':
 	hough_img = hough_lines(ROI_img, 1, 1 * np.pi/180, 30, 0.01, 0.1) # 허프 변환
 	result = weighted_img(hough_img, image) # 원본 이미지에 검출된 선 overlap
 	cv2.imshow('hough_img',hough_img) # roi 이미지 출력     
-    
-	cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력
+    	cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력
 
- 
-        steer_angle = -(center-340)/2
+
+        steer_angle = -(center-340)/4
         #print("steer_angle:",steer_angle)
         draw_steer(result, steer_angle)
 	rpos_prev=rpos
