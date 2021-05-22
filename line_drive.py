@@ -15,21 +15,27 @@ lpos=100
 lpos_prev=100
 rpos_exist=1
 lpos_exist=1
-steer_angle_prev=[]
-steer_angle_prev.append(0)
-steer_angle_prev.append(1)
-
 #low pass filter를 위한 변수 
-sensor_value=0
-filtered_value=0
+R_sensor_value=0
+R_filtered_value=0
+L_sensor_value=0
+L_filtered_value=0
+STEER_sensor_value=0
+STEER_filtered_value=0
 
 
 
 center=300
-
-running_time=0
+#차선인식 불가시 기본값 설정을 위한 변수 
 R_turn=0
 L_turn=0
+
+
+def LPF(raw_data,sensor_value,filtered_value,sensitivity=0.05):
+	#low pass filter를 위한 변수 
+	sensor_value=raw_data
+	filtered_value=filtered_value*(1-sensitivity)+sensor_value*sensitivity
+	return filtered_value
 
 def grayscale(img): # 흑백이미지로 변환
     return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
@@ -177,12 +183,7 @@ def draw_moving_rectangle_M(img, lines, color=[0, 0, 255], thickness=2): # 기�
 
     return 
 
-def LPF(steer_angle,sensitivity=0.05):
-	#low pass filter를 위한 변수 
-	global sensor_value,filtered_value
-	sensor_value=steer_angle
-	filtered_value=filtered_value*(1-sensitivity)+sensor_value*sensitivity
-	return filtered_value
+
 def weighted_img(img, initial_img, a=1, b=1.0, c=0.0): # 두 이미지 operlap 하기
     return cv2.addWeighted(initial_img, a, img, b, c)
 
@@ -200,13 +201,17 @@ def smoothing(lines, pre_frame):
     return avg_line
 
 def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허프 변환
-    global rpos,lpos,center
+    global rpos,lpos,center,R_sensor_value,R_filtered_value,L_sensor_value,L_filtered_value
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
     line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
     draw_lines(line_img, lines)
     rpos=draw_moving_rectangle_R(line_img, lines)
     lpos=draw_moving_rectangle_L(line_img, lines)
     draw_moving_rectangle_M(line_img, lines)
+    #R_filtered_value=LPF(rpos,R_sensor_value,R_filtered_value,0.4)#low pass filter를 이용해 필터링 
+    #L_filtered_value=LPF(lpos,L_sensor_value,L_filtered_value,0.4)#low pass filter를 이용해 필터링 
+    #rpos=int(R_filtered_value)
+    #lpos=int(L_filtered_value)   
     
 #test area
     if R_turn==1:
@@ -214,23 +219,12 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허�
     if L_turn==1:
 	lpos=20
 #test area
-    cv2.rectangle(line_img, (lpos - 20, 325),
-                       (lpos -10, 335),
-                       (0, 255, 0), 2)
-    cv2.rectangle(line_img, (rpos +10, 325),
-                       (rpos + 20, 335),
-                       (0, 255, 0), 2)
+    cv2.rectangle(line_img, (lpos - 20, 325),(lpos -10, 335),(0, 255, 0), 2)
+    cv2.rectangle(line_img, (rpos +10, 325),(rpos + 20, 335),(0, 255, 0), 2)
 
-
-#test area
 #기준 선 긋기 
     cv2.line(line_img,(rpos+10,325),(640,385),(0, 255, 0),4)
     cv2.line(line_img,(lpos - 20, 325),(10, 410),(0, 255, 0),4)
-#test area
-
-
-
-
     smoothing(lines,10)
     center = (lpos + rpos) / 2
     cv2.rectangle(line_img, (center-5, 345),
@@ -293,18 +287,19 @@ if __name__ == '__main__':
 	gray_img = grayscale(image) # 흑백이미지로 변환
 	blur_img = gaussian_blur(gray_img, 3) # Blur 효과
 	canny_img = canny(blur_img, 70, 210) # Canny edge 알고리즘
-	vertices = np.array([[(0,height),(0, height-150), (100,height/2+50),(width/2+200, height/2+50), (width,height-130) ,(width,height)]], dtype=np.int32)
+	vertices = np.array([[(0,height),(0, height-120), (width/2-190,height/2+50),(width/2+190, height/2+50), (width,height-120) ,(width,height)]], dtype=np.int32)
 	#vertices = np.array([[(0,height),(0,height-130),(width/2-200, height/2+50), (width/2+200, height/2+50), (width,height-130) ,(width,height)]], dtype=np.int32)
 	ROI_img = region_of_interest(canny_img, vertices) # ROI 설정
 	hough_img = hough_lines(ROI_img, 1, 1 * np.pi/180, 30, 0.01, 0.1) # 허프 변환
 	result = weighted_img(hough_img, image) # 원본 이미지에 검출된 선 overlap
 	cv2.imshow('hough_img',hough_img) # roi 이미지 출력     
-    	#cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력
+    	cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력
 
 
         steer_angle = -(center-340)/4
         #print("steer_angle:",steer_angle)
-	steer_angle=LPF(steer_angle,0.05)
+	STEER_filtered_value=LPF(steer_angle,STEER_sensor_value,STEER_filtered_value,0.05)#low pass filter를 이용해 필터링 
+	steer_angle=STEER_filtered_value
 	#조향각의 한계치를 설정하는 부분
     	if R_turn==1:
 		steer_angle=steer_angle-0.1
@@ -315,8 +310,6 @@ if __name__ == '__main__':
 		steer_angle=50
 	if steer_angle<=-50:
 		steer_angle=-50
-
-	steer_angle_prev.append(steer_angle)
 
 	
 	draw_steer(result,steer_angle)
