@@ -19,6 +19,12 @@ steer_angle_prev=[]
 steer_angle_prev.append(0)
 steer_angle_prev.append(1)
 
+#low pass filter를 위한 변수 
+sensor_value=0
+filtered_value=0
+
+
+
 center=300
 
 running_time=0
@@ -123,9 +129,9 @@ def draw_moving_rectangle_M(img, lines, color=[0, 0, 255], thickness=2): # 기�
 		for x1,y1,x2,y2 in line:
 		    if (x1<100):
 			left_rec=x1
-			cv2.rectangle(img, (left_rec - 20, 375),
-                       (left_rec -10, 385),
-                       (255, 0, 0), 2)
+			#cv2.rectangle(img, (left_rec - 20, 375),
+                       #(left_rec -10, 385),
+                       #(255, 0, 0), 2)
 			rpos_exist=rpos_exist+1
 			if rpos_exist==500:
 				print("왼쪽차선존재")
@@ -140,9 +146,9 @@ def draw_moving_rectangle_M(img, lines, color=[0, 0, 255], thickness=2): # 기�
 
 		    if (x1>550):
 			right_rec=x1
-			cv2.rectangle(img, (right_rec - 20, 375),
-                       (right_rec -10, 385),
-                       (255, 0, 0), 2)
+			#cv2.rectangle(img, (right_rec - 20, 375),
+                       #(right_rec -10, 385),
+                       #(255, 0, 0), 2)
 			lpos_exist=lpos_exist+1
 			if lpos_exist==500:
 				print("오른쪽차선존재")
@@ -171,7 +177,12 @@ def draw_moving_rectangle_M(img, lines, color=[0, 0, 255], thickness=2): # 기�
 
     return 
 
-
+def LPF(steer_angle,sensitivity=0.05):
+	#low pass filter를 위한 변수 
+	global sensor_value,filtered_value
+	sensor_value=steer_angle
+	filtered_value=filtered_value*(1-sensitivity)+sensor_value*sensitivity
+	return filtered_value
 def weighted_img(img, initial_img, a=1, b=1.0, c=0.0): # 두 이미지 operlap 하기
     return cv2.addWeighted(initial_img, a, img, b, c)
 
@@ -288,11 +299,12 @@ if __name__ == '__main__':
 	hough_img = hough_lines(ROI_img, 1, 1 * np.pi/180, 30, 0.01, 0.1) # 허프 변환
 	result = weighted_img(hough_img, image) # 원본 이미지에 검출된 선 overlap
 	cv2.imshow('hough_img',hough_img) # roi 이미지 출력     
-    	cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력
+    	#cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력
 
 
         steer_angle = -(center-340)/4
         #print("steer_angle:",steer_angle)
+	steer_angle=LPF(steer_angle,0.05)
 	#조향각의 한계치를 설정하는 부분
     	if R_turn==1:
 		steer_angle=steer_angle-0.1
