@@ -10,9 +10,7 @@ Width = 640#640
 Height = 480
 Offset = 330
 rpos=500
-rpos_prev=500
 lpos=100
-lpos_prev=100
 rpos_exist=1
 lpos_exist=1
 #low pass filter를 위한 변수 
@@ -25,7 +23,7 @@ STEER_filtered_value=0
 #차선 중앙값을 확인하기 위한 변수 
 center=300
 
-#차선인식 불가시 기본값 설정을 위한 변수 
+#차선인식 불가 시 기본값 설정을 위한 변수 
 R_turn=0
 L_turn=0
 
@@ -33,7 +31,6 @@ L_turn=0
 
 #좌우 차선 및 조향각의 로우 패스 필터링을 위한 함수 
 def LPF(raw_data,sensor_value,filtered_value,sensitivity=0.05):
-	#low pass filter를 위한 변수 
 	sensor_value=raw_data
 	filtered_value=filtered_value*(1-sensitivity)+sensor_value*sensitivity
 	return filtered_value
@@ -70,7 +67,7 @@ def draw_lines(img, lines, color=[0, 0, 255], thickness=2): # 선 그리기
 		    cv2.line(img, (x1, y1), (x2, y2), color, thickness)
 
 
-# draw rectangle
+# 양쪽 차선 및 중앙점을 그리는 함수 
 def draw_rectangle(img, lpos, rpos, offset=0):
     center = (lpos + rpos) / 2
 
@@ -266,15 +263,13 @@ if __name__ == '__main__':
 	blur_img = gaussian_blur(gray_img, 3) # Blur 효과
 	canny_img = canny(blur_img, 70, 210) # Canny edge 알고리즘
 	vertices = np.array([[(0,height),(0, height-120), (width/2-190,height/2+50),(width/2+190, height/2+50), (width,height-120) ,(width,height)]], dtype=np.int32)
-	#vertices = np.array([[(0,height),(0,height-130),(width/2-200, height/2+50), (width/2+200, height/2+50), (width,height-130) ,(width,height)]], dtype=np.int32)
 	ROI_img = region_of_interest(canny_img, vertices) # ROI 설정
 	hough_img = final_lines(ROI_img, 1, 1 * np.pi/180, 30, 0.01, 0.1) # 허프 변환 및 최종 라인 추출 
 	result = weighted_img(hough_img, image) # 원본 이미지에 검출된 선 overlap 
-    	cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력
+    	#cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력
 
 
         steer_angle = -(center-340)/4
-        #print("steer_angle:",steer_angle)
 	STEER_filtered_value=LPF(steer_angle,STEER_sensor_value,STEER_filtered_value,0.05)#low pass filter를 이용해 필터링 
 	steer_angle=STEER_filtered_value
 	#조향각의 한계치를 설정하는 부분
@@ -291,8 +286,7 @@ if __name__ == '__main__':
 
 
 	draw_steer(result,steer_angle)
-	rpos_prev=rpos
-	lpos_prev=lpos
+
 
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
