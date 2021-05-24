@@ -22,15 +22,16 @@ L_sensor_value=0
 L_filtered_value=0
 STEER_sensor_value=0
 STEER_filtered_value=0
-
-
-
+#차선 중앙값을 확인하기 위한 변수 
 center=300
+
 #차선인식 불가시 기본값 설정을 위한 변수 
 R_turn=0
 L_turn=0
 
 
+
+#좌우 차선 및 조향각의 로우 패스 필터링을 위한 함수 
 def LPF(raw_data,sensor_value,filtered_value,sensitivity=0.05):
 	#low pass filter를 위한 변수 
 	sensor_value=raw_data
@@ -73,11 +74,11 @@ def draw_lines(img, lines, color=[0, 0, 255], thickness=2): # 선 그리기
 def draw_rectangle(img, lpos, rpos, offset=0):
     center = (lpos + rpos) / 2
 
-    cv2.rectangle(img, (lpos - 5, 15 + offset),
-                       (lpos + 5, 25 + offset),
+    cv2.rectangle(img, (lpos - 25, 15 + offset),
+                       (lpos -15, 25 + offset),
                        (0, 255, 0), 2)
-    cv2.rectangle(img, (rpos - 5, 15 + offset),
-                       (rpos + 5, 25 + offset),
+    cv2.rectangle(img, (rpos + 5, 15 + offset),
+                       (rpos + 15, 25 + offset),
                        (0, 255, 0), 2)   
     cv2.rectangle(img, (center-5, 15 + offset),
                        (center+ 5, 25 + offset),
@@ -87,7 +88,7 @@ def draw_rectangle(img, lpos, rpos, offset=0):
     return img
 
 
-def draw_moving_rectangle_R(img, lines, color=[0, 0, 255], thickness=2): # 기준점 그리기
+def set_rpos(img, lines, color=[0, 0, 255], thickness=2): # rpos의 값 추출 
     if lines is not None:
 	    for line in lines:
 		for x1,y1,x2,y2 in line:
@@ -98,34 +99,24 @@ def draw_moving_rectangle_R(img, lines, color=[0, 0, 255], thickness=2): # 기�
 
 		    else:
 			pass
-			#if abs(rpos-rpos_prev)<5:
-				#rpos=rpos_prev
-
-    else:
-	print("NO RIGHT LINE!")
 					
     return rpos
 
 
-def draw_moving_rectangle_L(img, lines, color=[0, 0, 255], thickness=2): # 기준점 그리기
+def set_lpos(img, lines, color=[0, 0, 255], thickness=2): # lpos의 값 추출 
     if lines is not None:
 	    for line in lines:
 		for x1,y1,x2,y2 in line:
 	 	    global lpos,lpos_prev
-		    if (x1<200) and (y1==315):
+		    if (x1<230) and (y1==315):
 			lpos=x1
 
    		    else:
 			pass
-			#if abs(lpos-lpos_prev)<5:
-				#lpos=lpos_prev
-
-    else:
-	print("NO LEFT LINE!")
 
     return lpos
 
-def draw_moving_rectangle_M(img, lines, color=[0, 0, 255], thickness=2): # 기준점 그리기
+def line_existence(img, lines, color=[0, 0, 255], thickness=2): # 차선 감지 유무 확인 
     if lines is not None:
 	    global rpos_exist
 	    global lpos_exist
@@ -135,9 +126,6 @@ def draw_moving_rectangle_M(img, lines, color=[0, 0, 255], thickness=2): # 기�
 		for x1,y1,x2,y2 in line:
 		    if (x1<100):
 			left_rec=x1
-			#cv2.rectangle(img, (left_rec - 20, 375),
-                       #(left_rec -10, 385),
-                       #(255, 0, 0), 2)
 			rpos_exist=rpos_exist+1
 			if rpos_exist==500:
 				print("왼쪽차선존재")
@@ -152,9 +140,6 @@ def draw_moving_rectangle_M(img, lines, color=[0, 0, 255], thickness=2): # 기�
 
 		    if (x1>550):
 			right_rec=x1
-			#cv2.rectangle(img, (right_rec - 20, 375),
-                       #(right_rec -10, 385),
-                       #(255, 0, 0), 2)
 			lpos_exist=lpos_exist+1
 			if lpos_exist==500:
 				print("오른쪽차선존재")
@@ -187,7 +172,7 @@ def draw_moving_rectangle_M(img, lines, color=[0, 0, 255], thickness=2): # 기�
 def weighted_img(img, initial_img, a=1, b=1.0, c=0.0): # 두 이미지 operlap 하기
     return cv2.addWeighted(initial_img, a, img, b, c)
 
-def smoothing(lines, pre_frame):
+def smoothing(lines, pre_frame):#프레임 저장 후 평균치 출력을 통한 외란 조정 
     # collect frames & print average line
     lines = np.squeeze(lines)
     avg_line = np.array([0,0,0,0])
@@ -200,45 +185,38 @@ def smoothing(lines, pre_frame):
 
     return avg_line
 
-def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허프 변환
+def final_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허프 변환 및 최종 차선 검출 
     global rpos,lpos,center,R_sensor_value,R_filtered_value,L_sensor_value,L_filtered_value
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
     line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
     draw_lines(line_img, lines)
-    rpos=draw_moving_rectangle_R(line_img, lines)
-    lpos=draw_moving_rectangle_L(line_img, lines)
-    draw_moving_rectangle_M(line_img, lines)
-    #R_filtered_value=LPF(rpos,R_sensor_value,R_filtered_value,0.4)#low pass filter를 이용해 필터링 
-    #L_filtered_value=LPF(lpos,L_sensor_value,L_filtered_value,0.4)#low pass filter를 이용해 필터링 
-    #rpos=int(R_filtered_value)
-    #lpos=int(L_filtered_value)   
+
+    rpos=set_rpos(line_img, lines)#rpos검출 
+    lpos=set_lpos(line_img, lines)#lpos검출 
+    line_existence(line_img, lines)#차선 유무 검출 
+    R_filtered_value=LPF(rpos,R_sensor_value,R_filtered_value,0.8)#low pass filter를 이용해 필터링 
+    L_filtered_value=LPF(lpos,L_sensor_value,L_filtered_value,0.8)#low pass filter를 이용해 필터링 
+    rpos=int(R_filtered_value)
+    lpos=int(L_filtered_value)   
     
-#test area
     if R_turn==1:
 	rpos=620
     if L_turn==1:
 	lpos=20
-#test area
-    cv2.rectangle(line_img, (lpos - 20, 325),(lpos -10, 335),(0, 255, 0), 2)
-    cv2.rectangle(line_img, (rpos +10, 325),(rpos + 20, 335),(0, 255, 0), 2)
 
-#기준 선 긋기 
+    draw_rectangle(line_img, lpos, rpos,310)
+    #기준 선 긋기 
     cv2.line(line_img,(rpos+10,325),(640,385),(0, 255, 0),4)
     cv2.line(line_img,(lpos - 20, 325),(10, 410),(0, 255, 0),4)
+    #프레임 스무딩 처리 
     smoothing(lines,10)
     center = (lpos + rpos) / 2
-    cv2.rectangle(line_img, (center-5, 345),
-                       (center+ 5, 355),
-                       (0, 0, 255), 2)   #rpos,lpos기준 중심점 작성 
-    cv2.rectangle(line_img, (335, 345),
-                       (345, 355),
+    cv2.rectangle(line_img, (335, 325),
+                       (345, 335),
                        (255, 0, 0), 2)   #차선 기준점 작성 
     #print("right:",rpos,"left:",lpos)	 
 
     return line_img
-
-
-
 
 
 # You are to find "left and right position" of road lanes
@@ -290,9 +268,8 @@ if __name__ == '__main__':
 	vertices = np.array([[(0,height),(0, height-120), (width/2-190,height/2+50),(width/2+190, height/2+50), (width,height-120) ,(width,height)]], dtype=np.int32)
 	#vertices = np.array([[(0,height),(0,height-130),(width/2-200, height/2+50), (width/2+200, height/2+50), (width,height-130) ,(width,height)]], dtype=np.int32)
 	ROI_img = region_of_interest(canny_img, vertices) # ROI 설정
-	hough_img = hough_lines(ROI_img, 1, 1 * np.pi/180, 30, 0.01, 0.1) # 허프 변환
-	result = weighted_img(hough_img, image) # 원본 이미지에 검출된 선 overlap
-	cv2.imshow('hough_img',hough_img) # roi 이미지 출력     
+	hough_img = final_lines(ROI_img, 1, 1 * np.pi/180, 30, 0.01, 0.1) # 허프 변환 및 최종 라인 추출 
+	result = weighted_img(hough_img, image) # 원본 이미지에 검출된 선 overlap 
     	cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력
 
 
@@ -301,6 +278,7 @@ if __name__ == '__main__':
 	STEER_filtered_value=LPF(steer_angle,STEER_sensor_value,STEER_filtered_value,0.05)#low pass filter를 이용해 필터링 
 	steer_angle=STEER_filtered_value
 	#조향각의 한계치를 설정하는 부분
+
     	if R_turn==1:
 		steer_angle=steer_angle-0.1
     	if L_turn==1:
@@ -311,7 +289,7 @@ if __name__ == '__main__':
 	if steer_angle<=-50:
 		steer_angle=-50
 
-	
+
 	draw_steer(result,steer_angle)
 	rpos_prev=rpos
 	lpos_prev=lpos
