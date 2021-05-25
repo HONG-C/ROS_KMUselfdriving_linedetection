@@ -67,7 +67,7 @@ def draw_lines(img, lines, color=[0, 0, 255], thickness=2): # 선 그리기
 		    cv2.line(img, (x1, y1), (x2, y2), color, thickness)
 
 
-# 양쪽 차선 및 중앙점을 그리는 함수 
+# 양쪽 차선을 나타내는 사각형 및 중앙점을 그리는 함수 
 def draw_rectangle(img, lpos, rpos, offset=0):
     center = (lpos + rpos) / 2
 
@@ -184,7 +184,7 @@ def smoothing(lines, pre_frame):#프레임 저장 후 평균치 출력을 통한
 
 def final_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허프 변환 및 최종 차선 검출 
     global rpos,lpos,center,R_sensor_value,R_filtered_value,L_sensor_value,L_filtered_value
-    lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
+    lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)#허프변환 
     line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
     draw_lines(line_img, lines)
 
@@ -196,31 +196,25 @@ def final_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허�
     rpos=int(R_filtered_value)
     lpos=int(L_filtered_value)   
     
-    if R_turn==1:
+    if R_turn==1:#차선 미인식 시 기본 값 설정 
 	rpos=620
     if L_turn==1:
 	lpos=20
 
-    draw_rectangle(line_img, lpos, rpos,310)
-    #기준 선 긋기 
+    draw_rectangle(line_img, lpos, rpos,310)#차선인식 사각형 그리기 
     cv2.line(line_img,(rpos+10,325),(640,385),(0, 255, 0),4)
     cv2.line(line_img,(lpos - 20, 325),(10, 410),(0, 255, 0),4)
-    #프레임 스무딩 처리 
-    smoothing(lines,10)
+    smoothing(lines,10)#프레임 스무딩 처리 
     center = (lpos + rpos) / 2
     cv2.rectangle(line_img, (335, 325),
                        (345, 335),
                        (255, 0, 0), 2)   #차선 기준점 작성 
-    #print("right:",rpos,"left:",lpos)	 
 
     return line_img
 
 
 # You are to find "left and right position" of road lanes
 def process_image(frame):
-    global Offset
-   
-    #frame = draw_rectangle(frame, lpos, rpos, offset=Offset)
     
     return (lpos, rpos), frame
 
@@ -267,17 +261,10 @@ if __name__ == '__main__':
 	hough_img = final_lines(ROI_img, 1, 1 * np.pi/180, 30, 0.01, 0.1) # 허프 변환 및 최종 라인 추출 
 	result = weighted_img(hough_img, image) # 원본 이미지에 검출된 선 overlap 
     	#cv2.polylines(result, [vertices], True, (255,0,0), 5)#roi 사각형 범위 출력
-
-
         steer_angle = -(center-340)/4
-	STEER_filtered_value=LPF(steer_angle,STEER_sensor_value,STEER_filtered_value,0.05)#low pass filter를 이용해 필터링 
+	STEER_filtered_value=LPF(steer_angle,STEER_sensor_value,STEER_filtered_value,0.04)#low pass filter를 이용해 필터링 
 	steer_angle=STEER_filtered_value
 	#조향각의 한계치를 설정하는 부분
-
-    	if R_turn==1:
-		steer_angle=steer_angle-0.1
-    	if L_turn==1:
-		steer_angle=steer_angle+0.1
 
 	if steer_angle>=50:
 		steer_angle=50
