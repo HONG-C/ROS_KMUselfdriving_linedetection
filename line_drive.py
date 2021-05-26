@@ -186,6 +186,7 @@ def final_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허�
     global rpos,lpos,center,R_sensor_value,R_filtered_value,L_sensor_value,L_filtered_value
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)#허프변환 
     line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
+    smoothing(lines,3)#프레임 스무딩 처리 
     draw_lines(line_img, lines)
 
     rpos=set_rpos(line_img, lines)#rpos검출 
@@ -203,8 +204,7 @@ def final_lines(img, rho, theta, threshold, min_line_len, max_line_gap): # 허�
 
     draw_rectangle(line_img, lpos, rpos,310)#차선인식 사각형 그리기 
     cv2.line(line_img,(rpos+10,325),(640,385),(0, 255, 0),4)
-    cv2.line(line_img,(lpos - 20, 325),(10, 410),(0, 255, 0),4)
-    smoothing(lines,10)#프레임 스무딩 처리 
+    cv2.line(line_img,(lpos - 20, 325),(10, 410),(0, 255, 0),4) 
     center = (lpos + rpos) / 2
     cv2.rectangle(line_img, (335, 325),
                        (345, 335),
