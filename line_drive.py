@@ -6,7 +6,7 @@ import numpy as np
 import cv2, random, math, time
 import matplotlib.pyplot as plt
 
-Width = 640#640
+Width = 640
 Height = 480
 Offset = 330
 rpos=500
@@ -218,7 +218,7 @@ def process_image(frame):
     
     return (lpos, rpos), frame
 
-
+#핸들의 조작을 나타내는 함수 
 def draw_steer(image, steer_angle):
     global Width, Height, arrow_pic
 
